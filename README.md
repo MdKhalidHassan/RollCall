@@ -2,6 +2,10 @@
 
 RollCall is an Android app for university and college class attendance. It helps teachers manage a student roster, take attendance, and keep a history of attendance sessions.
 
+## Download
+
+Download the Android APK from the [v0.0.1 release](https://github.com/MdKhalidHassan/RollCall/releases/download/v0.0.1/RollCall.apk). To install, download the APK to your Android device and open it. Your device may ask you to allow installation from that source.
+
 ## Features
 
 - Maintain a student roster and edit student details.
