@@ -1,0 +1,6 @@
+{
+  "name": "RollCall",
+  "description": "University class attendance and student roster manager with automatic ascending roll sorting and clean teacher output.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

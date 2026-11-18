@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">RollCall</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Sign out</string>
+    <string name="tab_attendance">Attendance</string>
+    <string name="tab_history">History</string>
+    <string name="tab_roster">Roster</string>
+    <string name="save_class_record">Save Class</string>
+    <string name="class_setup_title">Class Setup</string>
+    <string name="label_date">Date (DD-MM-YYYY)</string>
+    <string name="label_course">Course / Class Name</string>
+    <string name="label_department">Department</string>
+    <string name="label_batch">Batch</string>
+    <string name="teacher_output_title">Teacher Output (Rolls Only)</string>
+    <string name="copy_to_clipboard">Copy to Clipboard</string>
+    <string name="copied_feedback">Copied!</string>
+    <string name="share_output">Share</string>
+    <string name="load_sample_batch">Load Sample Batch</string>
+    <string name="add_student">Add Student</string>
+    <string name="edit_student">Edit Student</string>
+    <string name="delete_student">Delete Student</string>
+    <string name="clear_attendance">Clear Checks</string>
+    <string name="mark_all_present">Mark All Present</string>
+</resources>

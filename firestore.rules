@@ -1,0 +1,144 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidClassConfig(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.courseName is string && data.courseName.size() <= 100 &&
+             data.department is string && data.department.size() <= 100 &&
+             data.batch is string && data.batch.size() <= 50;
+    }
+
+    function isValidStudent(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.rollNumber is string && data.rollNumber.size() >= 1 && data.rollNumber.size() <= 20 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() <= 30 &&
+             data.gmail is string && data.gmail.size() <= 120 &&
+             data.present is bool &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() <= 500)) &&
+             (!('photoData' in data) || (data.photoData is string && data.photoData.size() <= 100000));
+    }
+
+    function isValidAttendanceSession(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.dateFormatted is string && data.dateFormatted.size() >= 1 && data.dateFormatted.size() <= 30 &&
+             data.dateMillis is int && data.dateMillis >= 0 &&
+             data.courseName is string && data.courseName.size() <= 100 &&
+             data.department is string && data.department.size() <= 100 &&
+             data.batch is string && data.batch.size() <= 50 &&
+             data.presentRolls is list && data.presentRolls.size() <= 500 &&
+             (data.presentRolls.size() == 0 || data.presentRolls[0] is string) &&
+             data.totalStudents is int && data.totalStudents >= 0 && data.totalStudents <= 10000 &&
+             data.formattedOutput is string && data.formattedOutput.size() <= 5000;
+    }
+
+    match /users/{userId}/class_configs/{configId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(configId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(configId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'courseName', 'department', 'batch', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'courseName', 'department', 'batch', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidClassConfig(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(configId) &&
+                       isValidClassConfig(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['courseName', 'department', 'batch', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(configId);
+    }
+
+    match /users/{userId}/students/{studentId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(studentId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(studentId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'rollNumber', 'name', 'phone', 'gmail', 'present', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'rollNumber', 'name', 'phone', 'gmail', 'present', 'comment', 'photoData', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidStudent(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(studentId) &&
+                       isValidStudent(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly(['present', 'updatedAt']) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly(['rollNumber', 'name', 'phone', 'gmail', 'present', 'comment', 'photoData', 'updatedAt'])
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(studentId);
+    }
+
+    match /users/{userId}/attendance_sessions/{sessionId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(sessionId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'dateFormatted', 'dateMillis', 'courseName', 'department', 'batch', 'presentRolls', 'totalStudents', 'formattedOutput', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'dateFormatted', 'dateMillis', 'courseName', 'department', 'batch', 'presentRolls', 'totalStudents', 'formattedOutput', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidAttendanceSession(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(sessionId) &&
+                       isValidAttendanceSession(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['dateFormatted', 'dateMillis', 'courseName', 'department', 'batch', 'presentRolls', 'totalStudents', 'formattedOutput', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(sessionId);
+    }
+  }
+}

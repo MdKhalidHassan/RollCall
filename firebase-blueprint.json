@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "ClassConfig": {
+      "title": "ClassConfig",
+      "description": "Saved class setup header defaults (course name, department, batch) for a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID owning this configuration."
+        },
+        "courseName": {
+          "type": "string",
+          "description": "Course or class name shown in header and teacher output."
+        },
+        "department": {
+          "type": "string",
+          "description": "Academic department name."
+        },
+        "batch": {
+          "type": "string",
+          "description": "Batch or section identifier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["userId", "courseName", "department", "batch", "createdAt", "updatedAt"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Internal student record with contact details and current roll-call attendance toggle.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID owning this student roster entry."
+        },
+        "rollNumber": {
+          "type": "string",
+          "description": "Student roll number (e.g., 01, 02, 12)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the student (internal record only)."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Student phone number (internal record only)."
+        },
+        "gmail": {
+          "type": "string",
+          "description": "Student Gmail address (internal record only)."
+        },
+        "present": {
+          "type": "boolean",
+          "description": "Whether the student is currently marked present in roll call."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Optional internal note or comment about the student (max 500 chars)."
+        },
+        "photoData": {
+          "type": "string",
+          "description": "Optional compressed JPEG thumbnail encoded as Base64 (max 100000 chars)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["userId", "rollNumber", "name", "phone", "gmail", "present", "createdAt", "updatedAt"]
+    },
+    "AttendanceSession": {
+      "title": "AttendanceSession",
+      "description": "Saved class attendance snapshot containing class metadata, sorted present rolls, and formatted teacher output.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID owning this attendance session."
+        },
+        "dateFormatted": {
+          "type": "string",
+          "description": "Formatted date string in DD-MM-YYYY."
+        },
+        "dateMillis": {
+          "type": "integer",
+          "description": "Epoch milliseconds of the class date for chronological sorting."
+        },
+        "courseName": {
+          "type": "string",
+          "description": "Course or class name."
+        },
+        "department": {
+          "type": "string",
+          "description": "Academic department name."
+        },
+        "batch": {
+          "type": "string",
+          "description": "Batch or section identifier."
+        },
+        "presentRolls": {
+          "type": "array",
+          "description": "Sorted ascending list of present roll numbers."
+        },
+        "totalStudents": {
+          "type": "integer",
+          "description": "Total student count in roster when saved."
+        },
+        "formattedOutput": {
+          "type": "string",
+          "description": "Exact clean teacher-shareable attendance text."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when saved (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["userId", "dateFormatted", "dateMillis", "courseName", "department", "batch", "presentRolls", "totalStudents", "formattedOutput", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/class_configs/{configId}": {
+      "schema": { "$ref": "#/entities/ClassConfig" },
+      "description": "Per-user saved class header configurations (course, department, batch)."
+    },
+    "/users/{userId}/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Per-user internal student roster database and attendance status."
+    },
+    "/users/{userId}/attendance_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/AttendanceSession" },
+      "description": "Per-user saved class attendance history records."
+    }
+  }
+}
