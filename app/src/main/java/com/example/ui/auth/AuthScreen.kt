@@ -24,10 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.FactCheck
-import androidx.compose.material.icons.rounded.AutoAwesomeMosaic
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,8 +38,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -185,6 +189,9 @@ fun signOut(
 @Composable
 fun AuthScreen(
     onAuthSuccess: () -> Unit,
+    onContinueWithoutSignIn: () -> Unit = {},
+    onOpenUserGuide: () -> Unit = {},
+    onOpenDeveloperIdentity: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -366,14 +373,69 @@ fun AuthScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick = onContinueWithoutSignIn,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("continue_guest_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PhoneAndroid,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.continue_without_sign_in),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Your student roster is synced privately to your Google account.",
+                text = "Sign in with Google to sync across devices, or continue without sign-in to store everything offline on this device.",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onOpenUserGuide,
+                    modifier = Modifier.testTag("auth_user_guide_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(R.string.user_guide))
+                }
+                TextButton(
+                    onClick = onOpenDeveloperIdentity,
+                    modifier = Modifier.testTag("auth_developer_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Code,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(R.string.developer_identity))
+                }
+            }
         }
     }
 }

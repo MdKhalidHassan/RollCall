@@ -27,7 +27,7 @@ import kotlinx.coroutines.tasks.await
 class AttendanceRepository(
     private val db: FirebaseFirestore,
     private val auth: FirebaseAuth = Firebase.auth
-) {
+) : AttendanceDataSource {
     constructor(context: Context) : this(
         FirebaseFirestore.getInstance(
             context.applicationContext.getString(R.string.firestore_database_id)
@@ -41,7 +41,7 @@ class AttendanceRepository(
         return uid
     }
 
-    fun observeStudents(userId: String): Flow<List<Student>> = flow {
+    override fun observeStudents(userId: String): Flow<List<Student>> = flow {
         val uid = requireActiveUid(userId)
         val path = "users/$uid/students"
         emitAll(
@@ -68,7 +68,7 @@ class AttendanceRepository(
         )
     }
 
-    fun observeClassConfig(userId: String): Flow<ClassConfig?> = flow {
+    override fun observeClassConfig(userId: String): Flow<ClassConfig?> = flow {
         val uid = requireActiveUid(userId)
         val path = "users/$uid/class_configs/$DEFAULT_CONFIG_ID"
         emitAll(
@@ -99,7 +99,7 @@ class AttendanceRepository(
         )
     }
 
-    suspend fun saveClassConfig(
+    override suspend fun saveClassConfig(
         userId: String,
         courseName: String,
         department: String,
@@ -147,7 +147,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun upsertStudent(
+    override suspend fun upsertStudent(
         userId: String,
         studentId: String?,
         rollNumber: String,
@@ -155,8 +155,8 @@ class AttendanceRepository(
         phone: String,
         gmail: String,
         present: Boolean,
-        comment: String = "",
-        photoData: String = ""
+        comment: String,
+        photoData: String
     ): Result<Unit> {
         var docPath = "users/$userId/students"
         return try {
@@ -218,7 +218,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun toggleStudentPresence(
+    override suspend fun toggleStudentPresence(
         userId: String,
         studentId: String,
         present: Boolean
@@ -245,7 +245,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun setAllPresence(
+    override suspend fun setAllPresence(
         userId: String,
         students: List<Student>,
         present: Boolean
@@ -279,7 +279,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun populateSampleBatch(
+    override suspend fun populateSampleBatch(
         userId: String,
         existingRolls: Set<String>,
         seedHeaderIfEmpty: Boolean
@@ -345,7 +345,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun deleteStudent(userId: String, studentId: String): Result<Unit> {
+    override suspend fun deleteStudent(userId: String, studentId: String): Result<Unit> {
         var docPath = "users/$userId/students/$studentId"
         return try {
             val uid = requireActiveUid(userId)
@@ -363,7 +363,7 @@ class AttendanceRepository(
         }
     }
 
-    fun observeAttendanceSessions(userId: String): Flow<List<AttendanceSession>> = flow {
+    override fun observeAttendanceSessions(userId: String): Flow<List<AttendanceSession>> = flow {
         val uid = requireActiveUid(userId)
         val path = "users/$uid/attendance_sessions"
         emitAll(
@@ -392,7 +392,7 @@ class AttendanceRepository(
         )
     }
 
-    suspend fun saveAttendanceSession(
+    override suspend fun saveAttendanceSession(
         userId: String,
         dateFormatted: String,
         dateMillis: Long,
@@ -444,7 +444,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun applyAttendanceSessionToRoster(
+    override suspend fun applyAttendanceSessionToRoster(
         userId: String,
         students: List<Student>,
         presentRolls: List<String>
@@ -482,7 +482,7 @@ class AttendanceRepository(
         }
     }
 
-    suspend fun deleteAttendanceSession(userId: String, sessionId: String): Result<Unit> {
+    override suspend fun deleteAttendanceSession(userId: String, sessionId: String): Result<Unit> {
         var docPath = "users/$userId/attendance_sessions/$sessionId"
         return try {
             val uid = requireActiveUid(userId)

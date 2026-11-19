@@ -3,7 +3,7 @@ package com.example.ui
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.AttendanceRepository
+import com.example.data.AttendanceDataSource
 import com.example.model.AttendanceFilter
 import com.example.model.AttendanceSession
 import com.example.model.ClassConfig
@@ -48,7 +48,7 @@ data class HeaderFormState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AttendanceViewModel(
-    private val repository: AttendanceRepository,
+    private val repository: AttendanceDataSource,
     private val currentUserId: String
 ) : ViewModel() {
 

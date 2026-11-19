@@ -23,17 +23,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.outlined.FactCheck
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,15 +78,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.data.AttendanceRepository
+import com.example.data.local.AppPreferences
+import com.example.data.local.LocalAttendanceDatabase
+import com.example.data.local.LocalAttendanceRepository
 import com.example.model.Student
 import com.example.ui.AttendanceScreen
 import com.example.ui.AttendanceViewModel
+import com.example.ui.DeveloperIdentitySheet
 import com.example.ui.HistoryScreen
 import com.example.ui.RosterScreen
 import com.example.ui.StudentEditorSheet
 import com.example.ui.UiState
+import com.example.ui.UserGuideSheet
 import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.attemptAutoSignIn
+import com.example.ui.auth.onGoogleSignInClicked
 import com.example.ui.auth.signOut
 import com.example.ui.theme.RollCallTheme
 import com.google.firebase.Firebase
@@ -124,11 +136,16 @@ fun AppNavigation(auth: FirebaseAuth = Firebase.auth) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = remember(context) { CredentialManager.create(context) }
+    val appPreferences = remember(context) { AppPreferences(context) }
+
+    var isGuestMode by remember { mutableStateOf(appPreferences.isGuestMode()) }
+    var showUserGuide by remember { mutableStateOf(false) }
+    var showDeveloperIdentity by remember { mutableStateOf(false) }
 
     val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
 
     LaunchedEffect(Unit) {
-        if (auth.currentUser == null) {
+        if (auth.currentUser == null && !isGuestMode) {
             attemptAutoSignIn(
                 context = context,
                 credentialManager = credentialManager,
@@ -139,14 +156,74 @@ fun AppNavigation(auth: FirebaseAuth = Firebase.auth) {
         }
     }
 
+    LaunchedEffect(currentUser?.uid) {
+        if (currentUser != null && isGuestMode) {
+            appPreferences.setGuestMode(false)
+            isGuestMode = false
+        }
+    }
+
+    if (showUserGuide) {
+        UserGuideSheet(onDismiss = { showUserGuide = false })
+    }
+
+    if (showDeveloperIdentity) {
+        DeveloperIdentitySheet(
+            onDismiss = { showDeveloperIdentity = false }
+        )
+    }
+
     val user = currentUser
-    if (user == null) {
-        AuthScreen(onAuthSuccess = {})
-    } else {
-        key(user.uid) {
-            RollCallHome(
-                currentUser = user,
-                credentialManager = credentialManager
+    when {
+        user != null -> {
+            key(user.uid) {
+                RollCallHome(
+                    currentUser = user,
+                    credentialManager = credentialManager,
+                    onOpenUserGuide = { showUserGuide = true },
+                    onOpenDeveloperIdentity = { showDeveloperIdentity = true },
+                    onSignInFromGuest = {},
+                    onReturnToWelcome = {}
+                )
+            }
+        }
+
+        isGuestMode -> {
+            key(LocalAttendanceRepository.OFFLINE_USER_ID) {
+                RollCallHome(
+                    currentUser = null,
+                    credentialManager = credentialManager,
+                    onOpenUserGuide = { showUserGuide = true },
+                    onOpenDeveloperIdentity = { showDeveloperIdentity = true },
+                    onSignInFromGuest = { onError ->
+                        onGoogleSignInClicked(
+                            context = context,
+                            credentialManager = credentialManager,
+                            onAuthSuccess = {
+                                appPreferences.setGuestMode(false)
+                                isGuestMode = false
+                            },
+                            onAuthError = onError,
+                            scope = scope
+                        )
+                    },
+                    onReturnToWelcome = {
+                        appPreferences.setGuestMode(false)
+                        isGuestMode = false
+                    }
+                )
+            }
+        }
+
+        else -> {
+            AuthScreen(
+                onAuthSuccess = {},
+                onContinueWithoutSignIn = {
+                    appPreferences.setGuestMode(true)
+                    isGuestMode = true
+                },
+                onOpenUserGuide = { showUserGuide = true },
+                onOpenDeveloperIdentity = { showDeveloperIdentity = true }
             )
         }
     }
@@ -155,20 +232,32 @@ fun AppNavigation(auth: FirebaseAuth = Firebase.auth) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RollCallHome(
-    currentUser: FirebaseUser,
-    credentialManager: CredentialManager
+    currentUser: FirebaseUser?,
+    credentialManager: CredentialManager,
+    onOpenUserGuide: () -> Unit,
+    onOpenDeveloperIdentity: () -> Unit,
+    onSignInFromGuest: ((String) -> Unit) -> Unit,
+    onReturnToWelcome: () -> Unit
 ) {
-    val uid = currentUser.uid
+    val sessionKey = currentUser?.uid ?: LocalAttendanceRepository.OFFLINE_USER_ID
+    val isOfflineGuest = currentUser == null
+
     val viewModel: AttendanceViewModel = viewModel(
-        key = uid,
+        key = sessionKey,
         factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) {
                     "APPLICATION_KEY missing from CreationExtras"
                 }
-                val databaseId = app.getString(R.string.firestore_database_id)
-                val db = FirebaseFirestore.getInstance(databaseId)
-                AttendanceViewModel(AttendanceRepository(db), uid)
+                val dataSource = if (currentUser != null) {
+                    val databaseId = app.getString(R.string.firestore_database_id)
+                    val db = FirebaseFirestore.getInstance(databaseId)
+                    AttendanceRepository(db)
+                } else {
+                    val dao = LocalAttendanceDatabase.getInstance(app).attendanceDao()
+                    LocalAttendanceRepository(dao)
+                }
+                AttendanceViewModel(dataSource, sessionKey)
             }
         }
     )
@@ -243,7 +332,7 @@ private fun RollCallHome(
                     title = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.app_name),
@@ -264,9 +353,45 @@ private fun RollCallHome(
                                     )
                                 }
                             }
+                            if (isOfflineGuest) {
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CloudOff,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = "Offline",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = onOpenUserGuide,
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("user_guide_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.HelpOutline,
+                                contentDescription = stringResource(R.string.user_guide)
+                            )
+                        }
+
                         Box {
                             IconButton(
                                 onClick = { showAccountMenu = true },
@@ -283,16 +408,35 @@ private fun RollCallHome(
                                 expanded = showAccountMenu,
                                 onDismissRequest = { showAccountMenu = false }
                             ) {
-                                currentUser.email?.let { email ->
+                                if (currentUser != null) {
+                                    currentUser.email?.let { email ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(
+                                                        text = currentUser.displayName ?: "Signed in",
+                                                        style = MaterialTheme.typography.titleSmall
+                                                    )
+                                                    Text(
+                                                        text = email,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            },
+                                            onClick = { showAccountMenu = false }
+                                        )
+                                    }
+                                } else {
                                     DropdownMenuItem(
                                         text = {
                                             Column {
                                                 Text(
-                                                    text = currentUser.displayName ?: "Signed in",
+                                                    text = stringResource(R.string.offline_mode),
                                                     style = MaterialTheme.typography.titleSmall
                                                 )
                                                 Text(
-                                                    text = email,
+                                                    text = "Saved locally on this device",
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
@@ -301,22 +445,91 @@ private fun RollCallHome(
                                         onClick = { showAccountMenu = false }
                                     )
                                 }
+
+                                HorizontalDivider()
+
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.sign_out)) },
+                                    text = { Text(stringResource(R.string.user_guide)) },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.Logout,
+                                            imageVector = Icons.AutoMirrored.Rounded.MenuBook,
                                             contentDescription = null
                                         )
                                     },
                                     onClick = {
                                         showAccountMenu = false
-                                        signOut(
-                                            credentialManager = credentialManager,
-                                            scope = scope
-                                        )
-                                    }
+                                        onOpenUserGuide()
+                                    },
+                                    modifier = Modifier.testTag("menu_user_guide")
                                 )
+
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.developer_identity)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Code,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showAccountMenu = false
+                                        onOpenDeveloperIdentity()
+                                    },
+                                    modifier = Modifier.testTag("menu_developer_identity")
+                                )
+
+                                HorizontalDivider()
+
+                                if (currentUser != null) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sign_out)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Rounded.Logout,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showAccountMenu = false
+                                            signOut(
+                                                credentialManager = credentialManager,
+                                                scope = scope
+                                            )
+                                        }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.sign_in_with_google)) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Rounded.Login,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showAccountMenu = false
+                                            onSignInFromGuest { msg ->
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(msg)
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("menu_sign_in_google")
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Back to Sign-In Screen") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Rounded.Logout,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showAccountMenu = false
+                                            onReturnToWelcome()
+                                        }
+                                    )
+                                }
                             }
                         }
                     },

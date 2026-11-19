@@ -21,4 +21,8 @@
     <string name="delete_student">Delete Student</string>
     <string name="clear_attendance">Clear Checks</string>
     <string name="mark_all_present">Mark All Present</string>
+    <string name="continue_without_sign_in">Continue without Sign-In</string>
+    <string name="user_guide">User Guide</string>
+    <string name="developer_identity">Developer Identity</string>
+    <string name="offline_mode">Offline Mode</string>
 </resources>
